@@ -20,22 +20,9 @@ namespace Capybrawlers.Core
 
         private void Bootstrap()
         {
-            var events = new EventBus();
-            ServiceLocator.Register<IEventBus>(events);
-
-            var save = new LocalJsonSaveProvider();
-            ServiceLocator.Register<ISaveProvider>(save);
-
-            // Ensure a profile exists on disk before other services try to read it.
-            new OverlordInitializer(save).EnsureProfileExists();
-
-            var bp = new BPManager(save, events);
-            ServiceLocator.Register<IBPManager>(bp);
-
-            var scenes = new SceneLoader();
-            ServiceLocator.Register<ISceneLoader>(scenes);
-
-            scenes.LoadAdditive(SceneId.MainMenu);
+            // Services are already registered by AppBootstrap.Init() before
+            // any scene loads. GameManager only handles the additive scene load.
+            ServiceLocator.Get<ISceneLoader>().LoadAdditive(SceneId.MainMenu);
         }
     }
 }

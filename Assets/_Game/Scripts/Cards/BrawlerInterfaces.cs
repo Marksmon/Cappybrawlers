@@ -7,8 +7,9 @@ namespace Capybrawlers.Cards
     // Concrete type lives in Battle assembly and implements this interface.
     public interface IBrawlerInstance
     {
-        int CurrentHP { get; }
-        int MaxHP     { get; }
+        int CurrentHP  { get; }
+        int MaxHP      { get; }
+        int CurrentATK { get; }
         float MissingHpPercent { get; }
         bool IsHpBelowPercent(float percent);
 

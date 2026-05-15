@@ -6,8 +6,8 @@ namespace Capybrawlers.Battle
     public static class TerminalRallyHandler
     {
         // After each action resolves, check both teams for newly knocked-out brawlers.
-        // A knocked-out brawler with remaining queued actions enters Terminal Rally:
-        // its actions are prepended to the front of the remaining queue so they fire next.
+        // Every KO: publishes BrawlerKnockedOutEvent and removes the brawler's cards.
+        // If the KO'd brawler had queued actions, those fire next (Terminal Rally).
         public static void CheckAndInsertRallyActions(
             CapybrawlerInstance justActed,
             List<QueuedAction>  remainingQueue,
@@ -22,16 +22,20 @@ namespace Capybrawlers.Battle
             foreach (var brawler in allBrawlers)
             {
                 if (!brawler.IsKnockedOut || brawler.IsInTerminalRally) continue;
-                if (brawler.QueuedActions.Count == 0) continue;
 
                 brawler.IsInTerminalRally = true;
-
                 bool isPlayer = IsOnTeam(brawler, playerTeam);
                 events.Publish(new BrawlerKnockedOutEvent(brawler, isPlayer ? 0 : 1));
 
-                // Prepend rally actions so they fire before any remaining queue entries.
-                remainingQueue.InsertRange(0, brawler.QueuedActions);
-                brawler.QueuedActions.Clear();
+                // Remove the brawler's cards and lift cooldowns for last survivor.
+                (isPlayer ? playerTeam : opponentTeam).OnBrawlerKnockedOut(brawler);
+
+                // Terminal Rally: prepend any queued actions so they fire before the rest.
+                if (brawler.QueuedActions.Count > 0)
+                {
+                    remainingQueue.InsertRange(0, brawler.QueuedActions);
+                    brawler.QueuedActions.Clear();
+                }
             }
         }
 

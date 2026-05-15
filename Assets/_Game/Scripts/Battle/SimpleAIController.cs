@@ -16,13 +16,18 @@ namespace Capybrawlers.Battle
             // Sort hand by stamina cost descending — spend greedily.
             hand.Sort((a, b) => b.Card.staminaCost.CompareTo(a.Card.staminaCost));
 
+            // AI always targets the opponent's frontline (first alive brawler).
+            CapybrawlerInstance frontTarget = null;
+            foreach (var b in opponentTeam.Brawlers)
+                if (!b.IsKnockedOut) { frontTarget = b; break; }
+
             foreach (var entry in hand)
             {
-                if (alive.Count == 0 || targets.Count == 0) break;
+                if (alive.Count == 0 || frontTarget == null) break;
                 if (!aiTeam.StaminaPool.TrySpend(entry.Card.staminaCost)) continue;
 
                 var actor  = alive[Random.Range(0, alive.Count)];
-                var target = targets[Random.Range(0, targets.Count)];
+                var target = frontTarget;
 
                 actor.QueuedActions.Add(new QueuedAction
                 {

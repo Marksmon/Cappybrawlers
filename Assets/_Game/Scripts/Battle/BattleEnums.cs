@@ -4,12 +4,10 @@ namespace Capybrawlers.Battle
     {
         Idle,
         Setup,
-        StartOfTurn,
-        DrawPhase,
-        QueuePhase,
-        Resolution,
+        DrawPhase,        // cards drawn / hand refilled
+        DecisionPhase,    // 15-second player input window (was QueuePhase)
+        ActionPhase,      // SPD-ordered resolution (was Resolution)
         TerminalRally,
-        Cleanup,
         BattleEnd,
     }
 }
