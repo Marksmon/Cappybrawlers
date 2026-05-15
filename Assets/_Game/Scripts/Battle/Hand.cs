@@ -5,32 +5,63 @@ namespace Capybrawlers.Battle
 {
     public class Hand
     {
-        private readonly List<CardPoolEntry> _cards = new(3);
+        public const int MaxSize = 5;
+
+        private readonly List<CardPoolEntry> _cards = new(MaxSize);
 
         public IReadOnlyList<CardPoolEntry> Cards => _cards;
 
-        // Draw up to 3 eligible cards from the pool (random selection).
-        public void Draw(CardPool pool)
+        // Draw exactly N cards (used for initial 3-card draw at battle start).
+        public void DrawN(CardPool pool, int count)
         {
-            _cards.Clear();
             var eligible = pool.GetEligible();
-
-            while (_cards.Count < 3 && eligible.Count > 0)
+            int drawn    = 0;
+            while (drawn < count && _cards.Count < MaxSize && eligible.Count > 0)
             {
                 int idx   = Random.Range(0, eligible.Count);
                 var entry = eligible[idx];
                 entry.IsInHand = true;
                 _cards.Add(entry);
                 eligible.RemoveAt(idx);
+                drawn++;
             }
         }
 
-        // Called after Resolution: return unplayed cards and clear hand.
-        public void ReturnUnplayed(CardPool pool)
+        // Draw exactly one card. No-op if hand is full or pool is empty.
+        public void DrawOne(CardPool pool)
         {
-            foreach (var entry in _cards)
-                if (entry.IsInHand) // still in hand means it was not played
-                    entry.IsInHand = false;
+            if (_cards.Count >= MaxSize) return;
+            var eligible = pool.GetEligible();
+            if (eligible.Count == 0) return;
+            var entry = eligible[Random.Range(0, eligible.Count)];
+            entry.IsInHand = true;
+            _cards.Add(entry);
+        }
+
+        // Remove a card that was played or forcibly discarded.
+        public void RemoveCard(CardPoolEntry entry)
+        {
+            entry.IsInHand = false;
+            _cards.Remove(entry);
+        }
+
+        // Remove all cards belonging to a knocked-out brawler.
+        public void RemoveBrawlerCards(CapybrawlerInstance brawler)
+        {
+            for (int i = _cards.Count - 1; i >= 0; i--)
+            {
+                if (_cards[i].Owner == brawler)
+                {
+                    _cards[i].IsInHand = false;
+                    _cards.RemoveAt(i);
+                }
+            }
+        }
+
+        // Clear hand completely (used on battle reset only).
+        public void Clear()
+        {
+            foreach (var e in _cards) e.IsInHand = false;
             _cards.Clear();
         }
     }

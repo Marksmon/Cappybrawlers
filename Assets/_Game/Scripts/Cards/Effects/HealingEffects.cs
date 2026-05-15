@@ -3,36 +3,33 @@ using UnityEngine;
 
 namespace Capybrawlers.Cards.Effects
 {
-    // Heal: restore HP to source.
+    // Heal: restore ATK×0.5 HP to self.
     [CreateAssetMenu(fileName = "Effect_Heal", menuName = "Capybrawlers/Card Effects/Heal")]
     public class HealEffect : CardEffect
     {
-        public int healAmount;
-
         public override void Execute(EffectContext ctx)
         {
             var source = ctx.Source as IBrawlerInstance;
-            source?.RestoreHP(healAmount);
+            if (source == null) return;
+            source.RestoreHP(Mathf.RoundToInt(source.CurrentATK * 0.5f));
         }
     }
 
-    // Lifesteal: deal damage to target; restore same amount to source.
+    // Lifesteal: deal ATK damage to target; restore 50% of damage dealt as HP to self.
     [CreateAssetMenu(fileName = "Effect_Lifesteal", menuName = "Capybrawlers/Card Effects/Lifesteal")]
     public class LifestealEffect : CardEffect
     {
-        public int damage;
-
         public override void Execute(EffectContext ctx)
         {
             var source = ctx.Source as IBrawlerInstance;
             var target = ctx.Target as IBrawlerInstance;
             if (source == null || target == null) return;
-            int dealt = target.TakeDamage(damage);
-            source.RestoreHP(dealt);
+            int dealt = target.TakeDamage(source.CurrentATK);
+            source.RestoreHP(dealt / 2);
         }
     }
 
-    // Purge: remove all negative status effects from source.
+    // Purge: remove all negative status effects from self.
     [CreateAssetMenu(fileName = "Effect_Purge", menuName = "Capybrawlers/Card Effects/Purge")]
     public class PurgeEffect : CardEffect
     {

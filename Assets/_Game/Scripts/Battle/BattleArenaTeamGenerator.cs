@@ -8,6 +8,7 @@ namespace Capybrawlers.Battle
     //   Slot 0 (Frontline):      Plant or Rock
     //   Slot 1 (BacklineLeft):   Moon  or Water
     //   Slot 2 (BacklineRight):  Flame or Storm
+    // In Editor / dev builds a fixed team is used for reproducible testing.
     public static class BattleArenaTeamGenerator
     {
         private static readonly NatureType[][] SlotNatures =
@@ -17,13 +18,23 @@ namespace Capybrawlers.Battle
             new[] { NatureType.Flame, NatureType.Storm },
         };
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Fixed demo opponent: Plant (front), Water, Storm (back)
+        private static readonly NatureType[] DevOpponentNatures =
+            { NatureType.Plant, NatureType.Water, NatureType.Storm };
+#endif
+
         public static ResolvedBuild[] Generate(NatureLibrary natures, EquipmentLibrary equipment)
         {
             var builds = new ResolvedBuild[3];
 
             for (int slot = 0; slot < 3; slot++)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                var nature = DevOpponentNatures[slot];
+#else
                 var nature    = SlotNatures[slot][Random.Range(0, 2)];
+#endif
                 var element   = (ElementType)nature; // Nature and Element enums are aligned
                 var record    = new CapybrawlerBuildRecord
                 {

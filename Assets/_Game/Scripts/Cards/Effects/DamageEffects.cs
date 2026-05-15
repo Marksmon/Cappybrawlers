@@ -3,59 +3,58 @@ using UnityEngine;
 
 namespace Capybrawlers.Cards.Effects
 {
-    // Burn: deal damage to target equal to a flat amount; apply Burn status (damage per turn).
+    // Burn: deal ATK damage to target and apply Burn (damage per turn for N turns).
     [CreateAssetMenu(fileName = "Effect_Burn", menuName = "Capybrawlers/Card Effects/Burn")]
     public class BurnEffect : CardEffect
     {
-        public int damage;
-        public int burnDamagePerTurn;
-        public int burnDuration;
+        public int burnDamagePerTurn = 2;
+        public int burnDuration      = 3;
 
         public override void Execute(EffectContext ctx)
         {
+            var source = ctx.Source as IBrawlerInstance;
             var target = ctx.Target as IBrawlerInstance;
-            if (target == null) return;
-            target.TakeDamage(damage);
+            if (source == null || target == null) return;
+            target.TakeDamage(source.CurrentATK);
             target.ApplyStatusEffect(new StatusEffect(MechanicType.Burn, burnDamagePerTurn, burnDuration));
         }
     }
 
-    // Pierce: deal damage that ignores DEF entirely.
+    // Pierce: deal ATK damage that ignores DEF entirely.
     [CreateAssetMenu(fileName = "Effect_Pierce", menuName = "Capybrawlers/Card Effects/Pierce")]
     public class PierceEffect : CardEffect
     {
-        public int damage;
-
         public override void Execute(EffectContext ctx)
         {
+            var source = ctx.Source as IBrawlerInstance;
             var target = ctx.Target as IBrawlerInstance;
-            target?.TakeDamageIgnoreArmor(damage);
+            if (source == null || target == null) return;
+            target.TakeDamageIgnoreArmor(source.CurrentATK);
         }
     }
 
-    // Execute: deal bonus damage if target HP is below threshold %.
+    // Execute: deal ATK×1.5 damage; bonus ATK×0.5 if target HP < 30%.
     [CreateAssetMenu(fileName = "Effect_Execute", menuName = "Capybrawlers/Card Effects/Execute")]
     public class ExecuteEffect : CardEffect
     {
-        public int baseDamage;
-        public int bonusDamage;
-        [Range(0f, 1f)] public float hpThreshold;
-
         public override void Execute(EffectContext ctx)
         {
+            var source = ctx.Source as IBrawlerInstance;
             var target = ctx.Target as IBrawlerInstance;
-            if (target == null) return;
-            int dmg = target.IsHpBelowPercent(hpThreshold) ? baseDamage + bonusDamage : baseDamage;
+            if (source == null || target == null) return;
+            int dmg = Mathf.RoundToInt(source.CurrentATK * 1.5f);
+            if (target.IsHpBelowPercent(0.3f))
+                dmg += Mathf.RoundToInt(source.CurrentATK * 0.5f);
             target.TakeDamage(dmg);
         }
     }
 
-    // Poison: apply a stacking damage-over-time debuff.
+    // Poison: apply a damage-over-time debuff.
     [CreateAssetMenu(fileName = "Effect_Poison", menuName = "Capybrawlers/Card Effects/Poison")]
     public class PoisonEffect : CardEffect
     {
-        public int poisonDamagePerTurn;
-        public int duration;
+        public int poisonDamagePerTurn = 4;
+        public int duration            = 4;
 
         public override void Execute(EffectContext ctx)
         {

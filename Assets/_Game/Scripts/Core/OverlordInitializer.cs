@@ -11,9 +11,14 @@ namespace Capybrawlers.Core
 
         public void EnsureProfileExists()
         {
-            if (_save.Load() != null)
+            var existing = _save.Load();
+            if (existing != null)
+            {
+                PatchActiveTeamIfEmpty(existing);
                 return;
+            }
 
+            var starters = StarterBuilds();
             var profile = new PlayerProfile
             {
                 playerId          = Guid.NewGuid().ToString(),
@@ -21,31 +26,40 @@ namespace Capybrawlers.Core
                 bpPoints          = 0,
                 currentRank       = RankTier.Pup,
                 accountLevel      = 1,
-                ownedBuildRecords = StarterBuilds(),
+                ownedBuildRecords = starters,
+                activeTeamBuildIds = new[]
+                {
+                    starters[0].buildId,
+                    starters[1].buildId,
+                    starters[2].buildId,
+                },
             };
             _save.Save(profile);
         }
 
-        // Three predefined starter builds — one per formation slot — so Phase 3 testing is unblocked
-        // before the summoning system is designed.
+        private void PatchActiveTeamIfEmpty(PlayerProfile profile)
+        {
+            if (profile.activeTeamBuildIds != null &&
+                profile.activeTeamBuildIds.Length == 3 &&
+                !string.IsNullOrEmpty(profile.activeTeamBuildIds[0]))
+                return;
+
+            if (profile.ownedBuildRecords == null || profile.ownedBuildRecords.Count < 3)
+                return;
+
+            profile.activeTeamBuildIds = new[]
+            {
+                profile.ownedBuildRecords[0].buildId,
+                profile.ownedBuildRecords[1].buildId,
+                profile.ownedBuildRecords[2].buildId,
+            };
+            _save.Save(profile);
+        }
+
+        // Slot 0 = Rock (frontline), Slot 1 = Moon, Slot 2 = Flame (backline).
+        // Mirrors the demo/test layout: Flame | Moon | Rock vs Plant | Water | Storm.
         private static List<CapybrawlerBuildRecord> StarterBuilds() => new()
         {
-            new CapybrawlerBuildRecord
-            {
-                buildId = Guid.NewGuid().ToString(),
-                nature  = NatureType.Flame,
-                helmId  = "flame_helm_a",
-                armorId = "flame_armor_a",
-                weaponId = "flame_weapon_a",
-            },
-            new CapybrawlerBuildRecord
-            {
-                buildId  = Guid.NewGuid().ToString(),
-                nature   = NatureType.Plant,
-                helmId   = "plant_helm_a",
-                armorId  = "plant_armor_a",
-                weaponId = "plant_weapon_a",
-            },
             new CapybrawlerBuildRecord
             {
                 buildId  = Guid.NewGuid().ToString(),
@@ -53,6 +67,22 @@ namespace Capybrawlers.Core
                 helmId   = "rock_helm_a",
                 armorId  = "rock_armor_a",
                 weaponId = "rock_weapon_a",
+            },
+            new CapybrawlerBuildRecord
+            {
+                buildId  = Guid.NewGuid().ToString(),
+                nature   = NatureType.Moon,
+                helmId   = "moon_helm_a",
+                armorId  = "moon_armor_a",
+                weaponId = "moon_weapon_a",
+            },
+            new CapybrawlerBuildRecord
+            {
+                buildId  = Guid.NewGuid().ToString(),
+                nature   = NatureType.Flame,
+                helmId   = "flame_helm_a",
+                armorId  = "flame_armor_a",
+                weaponId = "flame_weapon_a",
             },
         };
 

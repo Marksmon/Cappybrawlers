@@ -29,12 +29,18 @@ namespace Capybrawlers.Battle
             TurnMachine.StartBattle();
         }
 
-        // Called by the player UI confirm button.
         public void ConfirmPlayerQueue() => TurnMachine.ConfirmQueue();
+
+        public void ForceDiscardCard(CardPoolEntry entry)
+        {
+            PlayerTeam.Hand.RemoveCard(entry);
+            PlayerTeam.CardPool.StartCooldown(entry);
+            TurnMachine.NotifyDiscardComplete();
+        }
 
         private void OnPhaseChanged(TurnPhaseChangedEvent e)
         {
-            if (e.Phase == TurnPhase.QueuePhase)
+            if (e.Phase == TurnPhase.DecisionPhase)
                 SimpleAIController.QueueActions(OpponentTeam, PlayerTeam);
         }
 

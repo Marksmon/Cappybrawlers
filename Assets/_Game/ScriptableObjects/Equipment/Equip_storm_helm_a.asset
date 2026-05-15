@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c91ba62752ca834d9a38478f81ccec8, type: 3}
+  m_Name: Equip_storm_helm_a
+  m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.EquipmentData
+  id: storm_helm_a
+  equipmentName: Storm Helm A
+  slot: 0
+  element: 1
+  hpMod: -4
+  atkMod: 0
+  defMod: 0
+  spdMod: 4
+  grantedCard: {fileID: 11400000, guid: 79ce3e7e74108164db214c68fbfb1eb2, type: 2}
+  icon: {fileID: 0}
