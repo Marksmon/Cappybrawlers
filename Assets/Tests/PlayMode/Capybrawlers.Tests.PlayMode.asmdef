@@ -1,0 +1,22 @@
+{
+    "name": "Capybrawlers.Tests.PlayMode",
+    "rootNamespace": "Capybrawlers.Tests",
+    "references": [
+        "Capybrawlers.Core",
+        "Capybrawlers.Cards",
+        "Capybrawlers.Creatures",
+        "Capybrawlers.Battle",
+        "Capybrawlers.Collection",
+        "Capybrawlers.UI",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": ["nunit.framework.dll"],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

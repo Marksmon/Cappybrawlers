@@ -1,0 +1,22 @@
+{
+    "name": "Capybrawlers.UI",
+    "rootNamespace": "Capybrawlers.UI",
+    "references": [
+        "Capybrawlers.Core",
+        "Capybrawlers.Cards",
+        "Capybrawlers.Creatures",
+        "Capybrawlers.Battle",
+        "Capybrawlers.Collection",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
