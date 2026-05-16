@@ -22,10 +22,21 @@ namespace Capybrawlers.Battle
                 playerTeam:   ownTeam,
                 opponentTeam: enemyTeam);
 
+            if (action.Card == null)
+            {
+                UnityEngine.Debug.LogWarning("[EffectProcessor] QueuedAction has null Card — skipping. Run Generate SO Assets.");
+                events.Publish(new ActionResolvedEvent(action, 0));
+                return 0;
+            }
+
             int hpBefore = action.Target?.CurrentHP ?? 0;
 
-            foreach (var effect in action.Card.effects)
-                effect.Execute(ctx);
+            if (action.Card.effects != null)
+                foreach (var effect in action.Card.effects)
+                {
+                    if (effect == null) { UnityEngine.Debug.LogWarning($"[EffectProcessor] Null effect entry on card '{action.Card.id}' — run Generate SO Assets."); continue; }
+                    effect.Execute(ctx);
+                }
 
             int hpAfter   = action.Target?.CurrentHP ?? 0;
             int damage    = hpBefore - hpAfter;

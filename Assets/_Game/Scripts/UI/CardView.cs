@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Capybrawlers.Battle;
 using TMPro;
 using UnityEngine;
@@ -73,6 +74,39 @@ namespace Capybrawlers.UI
         {
             _interactable = interactable;
             _assignButton.interactable = interactable;
+        }
+
+        // ── Deal-in animation ─────────────────────────────────────────────────
+
+        public void AnimateDealIn(float delay)
+        {
+            StopAllCoroutines();
+            StartCoroutine(Co_DealIn(delay));
+        }
+
+        private IEnumerator Co_DealIn(float delay)
+        {
+            var cg = GetComponent<CanvasGroup>();
+            if (cg == null) cg = gameObject.AddComponent<CanvasGroup>();
+
+            transform.localScale = new Vector3(0.4f, 0.4f, 1f);
+            cg.alpha = 0f;
+
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+
+            const float duration = 0.38f;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                transform.localScale = Vector3.LerpUnclamped(new Vector3(0.4f, 0.4f, 1f), Vector3.one, t);
+                cg.alpha = Mathf.Clamp01(t * 1.5f);
+                yield return null;
+            }
+
+            transform.localScale = Vector3.one;
+            cg.alpha = 1f;
         }
 
         // ── Drag handlers ─────────────────────────────────────────────────────

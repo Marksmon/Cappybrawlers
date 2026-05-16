@@ -9,9 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: aebce03f3867bf94686d83f108a2f342, type: 3}
   m_Name: Effect_Haste
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:HasteEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.HasteEffect
   mechanic: 0
-  spdBonus: 0
-  duration: 0
+  spdBonus: 5
+  duration: 2

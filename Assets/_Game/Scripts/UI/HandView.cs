@@ -7,15 +7,16 @@ namespace Capybrawlers.UI
 {
     public class HandView : MonoBehaviour
     {
-        [SerializeField] private CardView[] _cardViews;       // unchosen, bottom row (5 slots)
-        [SerializeField] private CardView[] _stagedCardViews; // chosen, staging strip (3 slots)
+        [SerializeField] private CardView[]          _cardViews;       // unchosen, bottom row (18 slots)
+        [SerializeField] private CardView[]          _stagedCardViews; // chosen, staging strip (10 slots)
+        [SerializeField] private TMPro.TextMeshProUGUI _deckCountText;  // deck count label beside hand
 
         private BattleTeam         _team;
         private BattleUIController _ui;
 
         // Tracks which hand slot each staged card came from.
-        private readonly int[]           _stagedFromSlot = new int[3];
-        private readonly CardPoolEntry[] _stagedEntries  = new CardPoolEntry[3];
+        private readonly int[]           _stagedFromSlot = new int[10];
+        private readonly CardPoolEntry[] _stagedEntries  = new CardPoolEntry[10];
         private int _stagedCount;
 
         private bool                  _discardMode;
@@ -26,6 +27,26 @@ namespace Capybrawlers.UI
             _team = team;
             _ui   = ui;
             Refresh();
+        }
+
+        // Same as Refresh but animates cards that weren't visible before (newly drawn).
+        public void RefreshWithAnimation()
+        {
+            bool[] prev = new bool[_cardViews.Length];
+            for (int i = 0; i < _cardViews.Length; i++)
+                prev[i] = _cardViews[i].gameObject.activeSelf;
+
+            Refresh();
+
+            int animIndex = 0;
+            for (int i = 0; i < _cardViews.Length; i++)
+            {
+                if (_cardViews[i].gameObject.activeSelf && !prev[i])
+                {
+                    _cardViews[i].AnimateDealIn(animIndex * 0.18f);
+                    animIndex++;
+                }
+            }
         }
 
         // Redraws hand without touching staging state.
@@ -51,6 +72,9 @@ namespace Capybrawlers.UI
                     _cardViews[i].gameObject.SetActive(false);
                 }
             }
+
+            if (_deckCountText != null && _team != null)
+                _deckCountText.text = $"{_team.CardPool.DeckCount}";
         }
 
         public void SetInteractable(bool interactable)
@@ -60,21 +84,27 @@ namespace Capybrawlers.UI
         }
 
         // Called by Lock In button or timer expiry — queues staged cards then clears staging.
+        // Cards are round-robined across alive brawlers (brawler 0, 1, 2, 0, 1, 2, ...).
+        // Stamina was already spent when each card was staged — do not spend again.
         public void QueueStagedCards()
         {
-            int brawlerIndex = 0;
+            var alive = new System.Collections.Generic.List<CapybrawlerInstance>();
+            foreach (var b in _team.Brawlers)
+                if (!b.IsKnockedOut) alive.Add(b);
+
+            if (alive.Count == 0)
+            {
+                for (int i = 0; i < _stagedCount; i++)
+                    _team.StaminaPool.Add(_stagedEntries[i].Card.staminaCost);
+                ClearStaging();
+                return;
+            }
+
+            int cycle = 0;
             for (int i = 0; i < _stagedCount; i++)
             {
                 var entry = _stagedEntries[i];
-
-                while (brawlerIndex < _team.Brawlers.Length &&
-                       _team.Brawlers[brawlerIndex].IsKnockedOut)
-                    brawlerIndex++;
-
-                if (brawlerIndex >= _team.Brawlers.Length) break;
-                if (!_team.StaminaPool.TrySpend(entry.Card.staminaCost)) break;
-
-                var actor = _team.Brawlers[brawlerIndex];
+                var actor = alive[cycle % alive.Count];
                 actor.QueuedActions.Add(new QueuedAction
                 {
                     Source = actor,
@@ -83,7 +113,7 @@ namespace Capybrawlers.UI
                 });
                 _team.CardPool.StartCooldown(entry);
                 _team.Hand.RemoveCard(entry);
-                brawlerIndex++;
+                cycle++;
             }
             ClearStaging();
         }
@@ -140,12 +170,7 @@ namespace Capybrawlers.UI
             if (_stagedCount >= _stagedCardViews.Length) return;
 
             var entry = _team.Hand.Cards[handSlot];
-
-            // Block staging if total committed + this card exceeds available stamina.
-            int committed = 0;
-            for (int j = 0; j < _stagedCount; j++)
-                committed += _stagedEntries[j].Card.staminaCost;
-            if (committed + entry.Card.staminaCost > _team.StaminaPool.Current) return;
+            if (!_team.StaminaPool.TrySpend(entry.Card.staminaCost)) return;
 
             int stagedSlot = _stagedCount;
             _stagedEntries[stagedSlot]  = entry;
@@ -158,6 +183,7 @@ namespace Capybrawlers.UI
 
         private void UnstageCard(int stagedSlot)
         {
+            _team.StaminaPool.Add(_stagedEntries[stagedSlot].Card.staminaCost);
             _cardViews[_stagedFromSlot[stagedSlot]].gameObject.SetActive(true);
 
             for (int i = stagedSlot; i < _stagedCount - 1; i++)

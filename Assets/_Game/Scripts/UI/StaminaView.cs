@@ -21,7 +21,7 @@ namespace Capybrawlers.UI
         public void Refresh()
         {
             if (_staminaText && _pool != null)
-                _staminaText.text = $"{_pool.Current}/{_pool.Max}";
+                _staminaText.text = $"{_pool.Current}";
         }
     }
 }

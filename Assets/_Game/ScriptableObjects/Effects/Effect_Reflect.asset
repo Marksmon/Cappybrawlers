@@ -9,9 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: b699af418b8db744caa377aea5fc9cbc, type: 3}
   m_Name: Effect_Reflect
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:ReflectEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.ReflectEffect
   mechanic: 0
-  reflectPercent: 0
-  duration: 0
+  reflectPercent: 50
+  duration: 1

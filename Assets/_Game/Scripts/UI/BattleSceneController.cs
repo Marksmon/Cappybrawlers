@@ -7,10 +7,11 @@ namespace Capybrawlers.UI
 {
     public class BattleSceneController : MonoBehaviour
     {
-        [SerializeField] private NatureLibrary     _natures;
-        [SerializeField] private EquipmentLibrary  _equipment;
-        [SerializeField] private BattleManager     _battleManager;
-        [SerializeField] private BattleUIController _ui;
+        [SerializeField] private NatureLibrary       _natures;
+        [SerializeField] private EquipmentLibrary    _equipment;
+        [SerializeField] private BattleManager       _battleManager;
+        [SerializeField] private BattleUIController  _ui;
+        [SerializeField] private BattleIntroController _introController;
 
         private void Start()
         {
@@ -23,8 +24,22 @@ namespace Capybrawlers.UI
             }
 
             var opponentBuilds = BattleArenaTeamGenerator.Generate(_natures, _equipment);
-            _battleManager.StartBattle(playerBuilds, opponentBuilds);
-            _ui.Initialize(_battleManager);
+
+            if (_introController != null)
+            {
+                _introController.Show(playerBuilds, opponentBuilds,
+                    profile?.displayName ?? "You",
+                    () =>
+                    {
+                        _battleManager.StartBattle(playerBuilds, opponentBuilds);
+                        _ui.Initialize(_battleManager);
+                    });
+            }
+            else
+            {
+                _battleManager.StartBattle(playerBuilds, opponentBuilds);
+                _ui.Initialize(_battleManager);
+            }
         }
 
         private ResolvedBuild[] ResolvePlayerTeam(PlayerProfile profile)

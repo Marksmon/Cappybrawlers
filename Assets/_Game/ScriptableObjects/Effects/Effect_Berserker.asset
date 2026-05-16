@@ -9,8 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 0f08f02712e698a4fb5ab4803ed815f6, type: 3}
   m_Name: Effect_Berserker
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:BerserkerEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.BerserkerEffect
   mechanic: 0
-  atkBonusPerMissingHpPercent: 0
+  atkBonusPerMissingHpPercent: 15

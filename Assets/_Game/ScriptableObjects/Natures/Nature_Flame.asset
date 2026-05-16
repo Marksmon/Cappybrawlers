@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 0
   baseHP: 40
-  baseATK: 30
+  baseATK: 38
   baseDEF: 10
   baseSPD: 20
   roleDescription: "Aggressive attacker \u2014 high ATK, fragile."

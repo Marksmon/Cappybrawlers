@@ -6,10 +6,11 @@ namespace Capybrawlers.Battle
     public class CardPoolEntry
     {
         public CardData             Card;
-        public CapybrawlerInstance  Owner;        // which brawler this card belongs to
+        public CapybrawlerInstance  Owner;
         public int                  CopyIndex;    // 0 or 1 (two copies of each card)
-        public int                  CooldownTurns; // 0 = available
+        public int                  CooldownTurns; // unused — kept for compatibility
         public bool                 IsInHand;
+        public bool                 IsUsed;       // in discard pile, awaiting reshuffle
     }
 
     public class CardPool
@@ -18,6 +19,18 @@ namespace Capybrawlers.Battle
 
         public IReadOnlyList<CardPoolEntry> Entries => _entries;
 
+        // Cards in the deck (not in hand, not in discard pile).
+        public int DeckCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var e in _entries)
+                    if (!e.IsInHand && !e.IsUsed) n++;
+                return n;
+            }
+        }
+
         // Build the 18-entry pool from a team's three brawlers (3 cards × 2 copies × 3 brawlers).
         public CardPool(CapybrawlerInstance[] brawlers)
         {
@@ -25,36 +38,39 @@ namespace Capybrawlers.Battle
             {
                 foreach (var card in brawler.Build.Cards)
                 {
+                    if (card == null) { UnityEngine.Debug.LogWarning($"[CardPool] {brawler.Build.BuildId} has a null grantedCard — skipping. Run Generate SO Assets."); continue; }
                     for (int copy = 0; copy < 2; copy++)
                         _entries.Add(new CardPoolEntry { Card = card, CopyIndex = copy, Owner = brawler });
                 }
             }
         }
 
-        // Returns entries eligible to be drawn: not in hand and cooldown expired.
+        // Returns deck entries eligible to be drawn (not in hand, not in discard pile).
         public List<CardPoolEntry> GetEligible()
         {
             var result = new List<CardPoolEntry>();
             foreach (var e in _entries)
-                if (!e.IsInHand && e.CooldownTurns <= 0)
+                if (!e.IsInHand && !e.IsUsed)
                     result.Add(e);
             return result;
         }
 
-        // Mark a played card as cooling down for 2 turns.
+        // Mark a played card as used (moves to discard pile).
         public void StartCooldown(CardPoolEntry entry)
         {
-            entry.IsInHand      = false;
-            entry.CooldownTurns = 2;
+            entry.IsInHand = false;
+            entry.IsUsed   = true;
         }
 
-        // Called at start of turn before draw.
-        public void TickCooldowns()
+        // Move all discarded cards back into the deck (reshuffle), excluding hand cards.
+        public void ReshuffleUsed()
         {
             foreach (var e in _entries)
-                if (e.CooldownTurns > 0)
-                    e.CooldownTurns--;
+                if (e.IsUsed) e.IsUsed = false;
         }
+
+        // Called at start of turn — no-op since cooldowns are gone, kept for compatibility.
+        public void TickCooldowns() { }
 
         // Permanently remove all cards belonging to a knocked-out brawler.
         public void RemoveBrawlerCards(CapybrawlerInstance brawler)
@@ -64,12 +80,8 @@ namespace Capybrawlers.Battle
                     _entries.RemoveAt(i);
         }
 
-        // Remove all cooldowns — called when only one brawler remains on a team.
-        public void LiftAllCooldowns()
-        {
-            foreach (var e in _entries)
-                e.CooldownTurns = 0;
-        }
+        // Lift all cooldowns — kept for compatibility (no-op).
+        public void LiftAllCooldowns() { }
 
         // Return all hand cards to pool without playing them (battle reset only).
         public void ReturnHand()

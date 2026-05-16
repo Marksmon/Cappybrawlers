@@ -1,22 +1,26 @@
+using System;
+using System.Collections;
 using Capybrawlers.Battle;
 using Capybrawlers.Core;
+using TMPro;
 using UnityEngine;
 
 namespace Capybrawlers.UI
 {
-    // Listens for ActionResolvedEvent and triggers attack/hit animations
-    // on the appropriate BrawlerViews.
+    // Listens for ActionResolvedEvent, plays attack/hit animations on BrawlerViews,
+    // spawns a floating damage number, then signals TurnStateMachine when done.
     public class ResolutionAnimator : MonoBehaviour
     {
-        [SerializeField] private BrawlerView[] _playerViews;   // length 3, index matches team.Brawlers
-        [SerializeField] private BrawlerView[] _opponentViews; // length 3
+        [SerializeField] private BrawlerView[]  _playerViews;
+        [SerializeField] private BrawlerView[]  _opponentViews;
+        [SerializeField] private RectTransform  _popupContainer;
 
         private BattleManager _manager;
         private IEventBus     _events;
 
         private void Start()
         {
-            var mgr = FindFirstObjectByType<BattleManager>();
+            var mgr = FindAnyObjectByType<BattleManager>();
             if (mgr != null) Bind(mgr);
             else Debug.LogWarning("[ResolutionAnimator] BattleManager not found.");
         }
@@ -46,6 +50,51 @@ namespace Capybrawlers.UI
                 else
                     targetView?.PlayHit();
             }
+
+            StartCoroutine(Co_ShowPopupAndNotify(e.DamageDealt, targetView));
+        }
+
+        private IEnumerator Co_ShowPopupAndNotify(int damage, BrawlerView targetView)
+        {
+            if (_popupContainer != null && damage > 0 && targetView != null)
+            {
+                bool done = false;
+                SpawnPopup(damage, targetView, () => done = true);
+                while (!done) yield return null;
+            }
+            else
+            {
+                // Non-damage action (buff, heal, control) — short pause for readability.
+                yield return new WaitForSeconds(0.28f);
+            }
+
+            _manager?.TurnMachine?.NotifyActionAnimDone();
+        }
+
+        private void SpawnPopup(int damage, BrawlerView targetView, Action onDone)
+        {
+            var go = new GameObject("DamagePopup");
+            go.transform.SetParent(_popupContainer, false);
+
+            var rt = go.AddComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(220f, 80f);
+
+            // Convert target view's screen position to popup container local space.
+            Vector3 screenPos = targetView.GetComponent<RectTransform>().position;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                _popupContainer,
+                new Vector2(screenPos.x, screenPos.y),
+                null,
+                out Vector2 localPos);
+            rt.anchoredPosition = localPos + new Vector2(0f, 50f);
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize  = 52f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+
+            go.AddComponent<CanvasGroup>();
+            go.AddComponent<DamagePopup>().Play(damage, onDone);
         }
 
         private BrawlerView FindView(CapybrawlerInstance brawler)

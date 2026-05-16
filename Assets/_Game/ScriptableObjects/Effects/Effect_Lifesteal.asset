@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 8cd8c9be2c90dfa4a8c45794a316619a, type: 3}
   m_Name: Effect_Lifesteal
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:LifestealEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.LifestealEffect
   mechanic: 0

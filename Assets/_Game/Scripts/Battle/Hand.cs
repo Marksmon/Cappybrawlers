@@ -5,37 +5,33 @@ namespace Capybrawlers.Battle
 {
     public class Hand
     {
-        public const int MaxSize = 5;
+        public const int MaxSize = 18;
 
         private readonly List<CardPoolEntry> _cards = new(MaxSize);
 
         public IReadOnlyList<CardPoolEntry> Cards => _cards;
 
-        // Draw exactly N cards (used for initial 3-card draw at battle start).
+        // Draw exactly N cards at random. If the deck runs out mid-draw,
+        // auto-reshuffles the discard pile and continues drawing.
         public void DrawN(CardPool pool, int count)
         {
-            var eligible = pool.GetEligible();
-            int drawn    = 0;
-            while (drawn < count && _cards.Count < MaxSize && eligible.Count > 0)
+            int drawn = 0;
+            while (drawn < count && _cards.Count < MaxSize)
             {
+                var eligible = pool.GetEligible();
+                if (eligible.Count == 0)
+                {
+                    pool.ReshuffleUsed();
+                    eligible = pool.GetEligible();
+                    if (eligible.Count == 0) break; // all cards are in hand
+                }
+
                 int idx   = Random.Range(0, eligible.Count);
                 var entry = eligible[idx];
                 entry.IsInHand = true;
                 _cards.Add(entry);
-                eligible.RemoveAt(idx);
                 drawn++;
             }
-        }
-
-        // Draw exactly one card. No-op if hand is full or pool is empty.
-        public void DrawOne(CardPool pool)
-        {
-            if (_cards.Count >= MaxSize) return;
-            var eligible = pool.GetEligible();
-            if (eligible.Count == 0) return;
-            var entry = eligible[Random.Range(0, eligible.Count)];
-            entry.IsInHand = true;
-            _cards.Add(entry);
         }
 
         // Remove a card that was played or forcibly discarded.

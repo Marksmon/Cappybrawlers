@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 089cc7009e283ef41a0a101f2343b237, type: 3}
   m_Name: Effect_FullStun
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:FullStunEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.FullStunEffect
   mechanic: 0

@@ -109,9 +109,9 @@ Both element and Nature share the same color identity — equipment and creature
 | Element / Nature | Primary | Accent |
 |---|---|---|
 | Flame | `#E84A1A` | `#FFAA44` |
-| Storm | `#4A90E2` | `#AADDFF` |
+| Storm | `#F5C518` | `#FFF176` |
 | Plant | `#38A832` | `#AAFFCC` |
-| Rock | `#8B6914` | `#C8A060` |
+| Rock | `#707070` | `#B0B0B0` |
 | Water | `#1A6FE8` | `#55CCFF` |
 | Moon | `#9B3FC8` | `#DDAAFF` |
 
@@ -134,6 +134,19 @@ Both element and Nature share the same color identity — equipment and creature
 - Negative: `#FF1744`
 - Stamina pip active: `#FFE066`
 - Stamina pip empty: `#444444`
+
+### Wood / Forest UI Theme
+All battle UI panels use a warm wood family. Element-tinted cards and brawler panels sit on top of this base.
+
+| Role | Hex |
+|---|---|
+| Panel bg (dark wood) | `#3B2310` |
+| Panel bg (mid wood)  | `#5C3A1E` |
+| Button (bark)        | `#7B4A20` |
+| Border / frame       | `#C8902A` |
+| Scene background     | `#1A3A1A` |
+| Info panel parchment | `#F5E8C8` |
+| Parchment text (ink) | `#2A1A0A` |
 
 ## VFX Guidelines
 

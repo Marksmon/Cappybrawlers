@@ -12,10 +12,16 @@ namespace Capybrawlers.Battle
             var all = new List<QueuedAction>();
 
             foreach (var b in playerTeam.Brawlers)
+            {
                 all.AddRange(b.QueuedActions);
+                b.QueuedActions.Clear(); // prevent terminal-rally double-fire
+            }
 
             foreach (var b in opponentTeam.Brawlers)
+            {
                 all.AddRange(b.QueuedActions);
+                b.QueuedActions.Clear();
+            }
 
             all.Sort((a, b) =>
             {

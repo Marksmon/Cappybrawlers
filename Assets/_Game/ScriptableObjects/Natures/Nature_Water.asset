@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 4
   baseHP: 60
-  baseATK: 20
+  baseATK: 28
   baseDEF: 15
   baseSPD: 15
   roleDescription: "Balanced bruiser \u2014 no weaknesses."
