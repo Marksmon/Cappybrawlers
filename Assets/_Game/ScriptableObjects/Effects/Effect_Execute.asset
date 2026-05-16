@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: e1cf2cb0708fe8c4db84aef9e7d4e9a5, type: 3}
   m_Name: Effect_Execute
-  m_EditorClassIdentifier: Capybrawlers.Cards:Capybrawlers.Cards.Effects:ExecuteEffect
+  m_EditorClassIdentifier: Capybrawlers.Cards::Capybrawlers.Cards.Effects.ExecuteEffect
   mechanic: 0

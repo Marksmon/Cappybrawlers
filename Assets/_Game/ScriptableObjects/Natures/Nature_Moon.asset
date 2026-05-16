@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 5
   baseHP: 60
-  baseATK: 15
+  baseATK: 22
   baseDEF: 20
   baseSPD: 15
   roleDescription: "Utility support \u2014 effects over raw damage."

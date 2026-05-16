@@ -4,14 +4,17 @@ using UnityEngine;
 namespace Capybrawlers.Battle
 {
     // Greedy random AI: spends stamina on the highest-cost cards first,
-    // assigns them to random alive brawlers targeting random opponents.
+    // assigns them round-robin to alive brawlers, capped at 10 actions per turn.
     public static class SimpleAIController
     {
+        private const int MaxActionsPerTurn = 10;
+
         public static void QueueActions(BattleTeam aiTeam, BattleTeam opponentTeam)
         {
-            var alive    = new List<CapybrawlerInstance>(aiTeam.ActiveBrawlers);
-            var targets  = new List<CapybrawlerInstance>(opponentTeam.ActiveBrawlers);
-            var hand     = new List<CardPoolEntry>(aiTeam.Hand.Cards);
+            var alive = new List<CapybrawlerInstance>(aiTeam.ActiveBrawlers);
+            var hand  = new List<CardPoolEntry>(aiTeam.Hand.Cards);
+
+            if (alive.Count == 0) return;
 
             // Sort hand by stamina cost descending — spend greedily.
             hand.Sort((a, b) => b.Card.staminaCost.CompareTo(a.Card.staminaCost));
@@ -20,23 +23,27 @@ namespace Capybrawlers.Battle
             CapybrawlerInstance frontTarget = null;
             foreach (var b in opponentTeam.Brawlers)
                 if (!b.IsKnockedOut) { frontTarget = b; break; }
+            if (frontTarget == null) return;
 
+            int queued = 0;
+            int cycle  = 0;
             foreach (var entry in hand)
             {
-                if (alive.Count == 0 || frontTarget == null) break;
+                if (queued >= MaxActionsPerTurn) break;
                 if (!aiTeam.StaminaPool.TrySpend(entry.Card.staminaCost)) continue;
 
-                var actor  = alive[Random.Range(0, alive.Count)];
-                var target = frontTarget;
-
+                var actor = alive[cycle % alive.Count];
                 actor.QueuedActions.Add(new QueuedAction
                 {
                     Source = actor,
                     Card   = entry.Card,
-                    Target = target,
+                    Target = frontTarget,
                 });
 
                 aiTeam.CardPool.StartCooldown(entry);
+                aiTeam.Hand.RemoveCard(entry);
+                cycle++;
+                queued++;
             }
         }
     }

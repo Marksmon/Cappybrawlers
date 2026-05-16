@@ -37,7 +37,9 @@ namespace Capybrawlers.Battle
 
         public int TakeDamage(int amount)
         {
-            int effective = Math.Max(1, amount - CurrentDEF);
+            // DEF = % damage reduction, capped at 60% so even max-DEF targets take meaningful hits.
+            float reduction = (float)Math.Min(60, CurrentDEF) / 100f;
+            int effective = Math.Max(1, (int)(amount * (1f - reduction)));
             return AbsorbAndApply(effective);
         }
 

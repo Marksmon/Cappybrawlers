@@ -21,6 +21,7 @@ namespace Capybrawlers.UI
 
         [Header("HUD")]
         [SerializeField] private TextMeshProUGUI _turnText;
+        [SerializeField] private TextMeshProUGUI _matchupText;
         [SerializeField] private TextMeshProUGUI _timerText;
 
         [Header("Info Panel")]
@@ -45,6 +46,7 @@ namespace Capybrawlers.UI
             foreach (var v in _opponentBrawlerViews)
                 v.OnClicked += b => { SelectTarget(b); ShowBrawlerInfo(b); };
 
+            if (_matchupText) _matchupText.text = "Overlord vs Opponent";
             _staminaView.Bind(manager.PlayerTeam.StaminaPool, _events);
             _handView.Bind(manager.PlayerTeam, this);
             _confirmButton.Bind(manager, _handView);
@@ -95,7 +97,19 @@ namespace Capybrawlers.UI
             _handView.SetInteractable(isDecision);
             _confirmButton.SetPhase(e.Phase);
             if (!isDecision && _timerText) _timerText.text = "";
-            RefreshAllViews();
+
+            if (isDecision)
+            {
+                // Animate newly drawn cards flying into their hand slots
+                RefreshBrawlerViews(_playerBrawlerViews,   _manager.PlayerTeam);
+                RefreshBrawlerViews(_opponentBrawlerViews, _manager.OpponentTeam);
+                _staminaView.Refresh();
+                _handView.RefreshWithAnimation();
+            }
+            else
+            {
+                RefreshAllViews();
+            }
         }
 
         private void OnActionResolved(ActionResolvedEvent e) => RefreshAllViews();

@@ -19,16 +19,5 @@ namespace Capybrawlers.Cards.Effects
         }
     }
 
-    // StaminaRegen: restore Stamina to own team immediately.
-    [CreateAssetMenu(fileName = "Effect_StaminaRegen", menuName = "Capybrawlers/Card Effects/StaminaRegen")]
-    public class StaminaRegenEffect : CardEffect
-    {
-        public int amount;
 
-        public override void Execute(EffectContext ctx)
-        {
-            var player = ctx.PlayerTeam as ITeamState;
-            player?.Stamina.Add(amount);
-        }
-    }
 }

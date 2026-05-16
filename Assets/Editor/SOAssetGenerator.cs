@@ -21,12 +21,12 @@ public static class SOAssetGenerator
     // ── Nature base stats from GDD ────────────────────────────────────────────
     private static readonly (NatureType type, int hp, int atk, int def, int spd, string role)[] NatureStats =
     {
-        (NatureType.Flame, 40,  30, 10, 20, "Aggressive attacker — high ATK, fragile."),
-        (NatureType.Storm, 40,  20, 10, 30, "Speed controller — fastest, hits first."),
-        (NatureType.Plant, 100, 10, 20, 20, "Sustain tank — massive HP, supports team."),
-        (NatureType.Rock,  80,  20, 30, 10, "Immovable wall — extreme DEF, moves last."),
-        (NatureType.Water, 60,  20, 15, 15, "Balanced bruiser — no weaknesses."),
-        (NatureType.Moon,  60,  15, 20, 15, "Utility support — effects over raw damage."),
+        (NatureType.Flame, 40,  38, 10, 20, "Aggressive attacker — high ATK, fragile."),
+        (NatureType.Storm, 40,  30, 10, 30, "Speed controller — fastest, hits first."),
+        (NatureType.Plant, 100, 12, 20, 20, "Sustain tank — massive HP, supports team."),
+        (NatureType.Rock,  80,  26, 30, 10, "Immovable wall — extreme DEF, moves last."),
+        (NatureType.Water, 60,  28, 15, 15, "Balanced bruiser — no weaknesses."),
+        (NatureType.Moon,  60,  22, 20, 15, "Utility support — effects over raw damage."),
     };
 
     // ── Equipment per element: (suffix, slot, hpMod, atkMod, defMod, spdMod, cardName, cost, mechanic, description)
@@ -114,6 +114,7 @@ public static class SOAssetGenerator
         var natAssets    = CreateNatureAssets();
         CreateNatureLibrary(natAssets);
         CreateEquipmentLibrary(equipAssets);
+        WireSprites(natAssets, equipAssets, cardAssets);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -121,6 +122,42 @@ public static class SOAssetGenerator
         WireLibrariesToBattleScene();
 
         Debug.Log("[Capybrawlers] SO assets generated and wired. Press Play from Battle.unity to test.");
+    }
+
+    private static void WireSprites(NatureData[] natAssets, EquipmentData[] equipAssets, Dictionary<string, CardData> cardAssets)
+    {
+        foreach (var nd in natAssets)
+        {
+            var name = nd.natureType.ToString().ToLower();
+            var path = $"Assets/_Game/Art/Sprites/Creatures/capy_{name}.png";
+            AssetDatabase.ImportAsset(path);
+            var spr = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (spr != null) { nd.idleSprite = spr; EditorUtility.SetDirty(nd); }
+        }
+
+        foreach (var ed in equipAssets)
+        {
+            var element = ed.element.ToString().ToLower();
+            var slot    = SlotStr(ed.slot);
+            var parts   = ed.id.Split('_'); // e.g. "flame_helm_a"
+            if (parts.Length < 3) continue;
+            var tier = parts[2];
+            var path = $"Assets/_Game/Art/Sprites/UI/Equipment/equip_{element}_{slot}_{tier}.png";
+            AssetDatabase.ImportAsset(path);
+            var spr = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (spr != null) { ed.icon = spr; EditorUtility.SetDirty(ed); }
+        }
+
+        foreach (var kvp in cardAssets)
+        {
+            var cd    = kvp.Value;
+            var parts = cd.id.Split('_'); // e.g. "card_flame_helm_a"
+            if (parts.Length < 4) continue;
+            var path = $"Assets/_Game/Art/Sprites/Cards/card_{parts[1]}_{parts[2]}_{parts[3]}.png";
+            AssetDatabase.ImportAsset(path);
+            var spr = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (spr != null) { cd.artwork = spr; EditorUtility.SetDirty(cd); }
+        }
     }
 
     private static void WireLibrariesToBattleScene()
@@ -132,6 +169,10 @@ public static class SOAssetGenerator
             Debug.LogWarning("[Capybrawlers] Library assets not found — skipping scene wiring.");
             return;
         }
+
+        bool wasAlreadyOpen = false;
+        for (int i = 0; i < EditorSceneManager.sceneCount; i++)
+            if (EditorSceneManager.GetSceneAt(i).path == BattleScenePath) { wasAlreadyOpen = true; break; }
 
         var scene = EditorSceneManager.OpenScene(BattleScenePath, OpenSceneMode.Additive);
 
@@ -157,7 +198,8 @@ public static class SOAssetGenerator
         }
 
         EditorSceneManager.SaveScene(scene);
-        EditorSceneManager.CloseScene(scene, true);
+        if (!wasAlreadyOpen)
+            EditorSceneManager.CloseScene(scene, true);
     }
 
     // ── Effect assets (one shared SO per mechanic type) ───────────────────────
@@ -361,6 +403,8 @@ public static class SOAssetGenerator
     {
         var existing = AssetDatabase.LoadAssetAtPath<T>(path);
         if (existing != null) return existing;
+        // File may exist with a broken/stale m_Script GUID — delete it before recreating.
+        AssetDatabase.DeleteAsset(path);
         var asset = ScriptableObject.CreateInstance<T>();
         AssetDatabase.CreateAsset(asset, path);
         return asset;

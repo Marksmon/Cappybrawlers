@@ -43,7 +43,7 @@ namespace Capybrawlers.Battle
             for (int i = 0; i < builds.Length; i++)
                 Brawlers[i] = new CapybrawlerInstance(builds[i]);
 
-            StaminaPool = new StaminaPool(max: 6, regenPerTurn: 1, startingAmount: 2, events, isPlayerTeam);
+            StaminaPool = new StaminaPool(max: int.MaxValue, regenPerTurn: 2, startingAmount: 3, events, isPlayerTeam);
             CardPool    = new CardPool(Brawlers);
             Hand        = new Hand();
         }

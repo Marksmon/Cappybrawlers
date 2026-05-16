@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 3
   baseHP: 80
-  baseATK: 20
+  baseATK: 26
   baseDEF: 30
   baseSPD: 10
   roleDescription: "Immovable wall \u2014 extreme DEF, moves last."

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 2
   baseHP: 100
-  baseATK: 10
+  baseATK: 12
   baseDEF: 20
   baseSPD: 20
   roleDescription: "Sustain tank \u2014 massive HP, supports team."

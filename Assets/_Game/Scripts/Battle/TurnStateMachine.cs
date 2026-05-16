@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace Capybrawlers.Battle
 {
-    // Turn loop:  [initial 3-card draw] → Decision(15s) → Action → Draw(1) → Decision → …
-    // Drawing Phase: draw 1 card per turn. If hand is full (5), player has 5s to discard first.
+    // Turn loop:  [initial 6-card draw] → Decision(15s) → Action → Draw(3) → Decision → …
+    // Drawing Phase: draw 3 cards per turn; auto-discard oldest if hand would exceed max.
     // Turn 10+: penalty damage (10 × (turn−9)) applied to every brawler before Decision.
     // Brawler KO: their cards are permanently removed; last survivor gets cooldowns lifted.
     public class TurnStateMachine
@@ -21,6 +21,7 @@ namespace Capybrawlers.Battle
 
         private bool _queueConfirmed;
         private bool _discardCompleted;
+        private bool _actionAnimDone;
 
         public TurnStateMachine(BattleTeam player, BattleTeam opponent,
             IEventBus events, MonoBehaviour runner)
@@ -39,6 +40,9 @@ namespace Capybrawlers.Battle
         // Called by BattleManager after the player discards a card in Drawing Phase.
         public void NotifyDiscardComplete() => _discardCompleted = true;
 
+        // Called by ResolutionAnimator when the damage popup animation finishes.
+        public void NotifyActionAnimDone() => _actionAnimDone = true;
+
         // ── Main loop ─────────────────────────────────────────────────────────
 
         private IEnumerator Co_RunBattle()
@@ -46,9 +50,9 @@ namespace Capybrawlers.Battle
             SetPhase(TurnPhase.Setup);
             yield return null;
 
-            // Initial draw: 3 cards each.
-            _player.Hand.DrawN(_player.CardPool, 3);
-            _opponent.Hand.DrawN(_opponent.CardPool, 3);
+            // Initial draw: 6 cards each.
+            _player.Hand.DrawN(_player.CardPool, 6);
+            _opponent.Hand.DrawN(_opponent.CardPool, 6);
             SetPhase(TurnPhase.DrawPhase);
             yield return null;
 
@@ -56,11 +60,9 @@ namespace Capybrawlers.Battle
             {
                 _events.Publish(new TurnChangedEvent(CurrentTurn));
 
-                // Start-of-turn bookkeeping: cooldowns, regen, DoT effects.
+                // Start-of-turn bookkeeping: cooldowns, DoT effects.
                 _player.CardPool.TickCooldowns();
                 _opponent.CardPool.TickCooldowns();
-                _player.StaminaPool.Regen();
-                _opponent.StaminaPool.Regen();
                 foreach (var b in _player.Brawlers)   b.TickEffects();
                 foreach (var b in _opponent.Brawlers) b.TickEffects();
                 ProcessNewDeaths();
@@ -84,6 +86,10 @@ namespace Capybrawlers.Battle
 
                 foreach (var b in _player.Brawlers)   b.QueuedActions.Clear();
                 foreach (var b in _opponent.Brawlers) b.QueuedActions.Clear();
+
+                // Regen after actions so turn 1 starts with 3, turn 2 starts with 5.
+                _player.StaminaPool.Regen();
+                _opponent.StaminaPool.Regen();
 
                 yield return Co_DrawPhase();
 
@@ -132,74 +138,48 @@ namespace Capybrawlers.Battle
                 TerminalRallyHandler.CheckAndInsertRallyActions(
                     action.Source, ordered, _player, _opponent, _events);
 
-                yield return null; // one frame per action for animation
+                // Wait for the damage popup animation (ResolutionAnimator calls NotifyActionAnimDone).
+                // 2-second timeout so a missing animator can't soft-lock the battle.
+                _actionAnimDone = false;
+                float animRemaining = 2f;
+                while (!_actionAnimDone && animRemaining > 0f)
+                {
+                    animRemaining -= Time.deltaTime;
+                    yield return null;
+                }
             }
         }
 
         private IEnumerator Co_DrawPhase()
         {
             SetPhase(TurnPhase.DrawPhase);
-
-            // AI draws 1 card (auto-discards oldest if hand full).
             FillHandAI(_opponent);
-
-            // Player draws 1 card (may require discard with 5-second timer).
-            yield return Co_FillHandPlayer();
-
+            DrawCardsForPlayer(3);
             yield return null;
         }
 
-        private IEnumerator Co_FillHandPlayer()
+        private void DrawCardsForPlayer(int count)
         {
-            var eligible = _player.CardPool.GetEligible();
-            if (eligible.Count == 0) yield break; // nothing available to draw
-
-            if (_player.Hand.Cards.Count < Hand.MaxSize)
+            // Auto-discard oldest cards to make room if needed.
+            while (_player.Hand.Cards.Count > Hand.MaxSize - count)
             {
-                // Hand has room — draw immediately.
-                _player.Hand.DrawOne(_player.CardPool);
-                yield break;
-            }
-
-            // Hand is full — player must discard one card before drawing.
-            _discardCompleted = false;
-            _events.Publish(new DiscardRequiredEvent());
-
-            float timer = 5f;
-            while (timer > 0f && !_discardCompleted)
-            {
-                timer -= Time.deltaTime;
-                _events.Publish(new DrawPhaseTimerEvent(Mathf.Max(0f, timer)));
-                yield return null;
-            }
-
-            if (!_discardCompleted)
-            {
-                // Timer expired — auto-discard the oldest card in hand.
                 var oldest = _player.Hand.Cards[0];
                 _player.Hand.RemoveCard(oldest);
-                _player.CardPool.StartCooldown(oldest);
-                _events.Publish(new DrawPhaseTimerExpiredEvent());
             }
-
-            _player.Hand.DrawOne(_player.CardPool);
+            _player.Hand.DrawN(_player.CardPool, count);
         }
 
         // ── AI helpers ────────────────────────────────────────────────────────
 
         private static void FillHandAI(BattleTeam team)
         {
-            var eligible = team.CardPool.GetEligible();
-            if (eligible.Count == 0) return;
-
-            if (team.Hand.Cards.Count >= Hand.MaxSize)
+            const int drawCount = 3;
+            while (team.Hand.Cards.Count > Hand.MaxSize - drawCount)
             {
-                // Auto-discard oldest card to make room.
                 var discard = team.Hand.Cards[0];
-                team.CardPool.StartCooldown(discard);
                 team.Hand.RemoveCard(discard);
             }
-            team.Hand.DrawOne(team.CardPool);
+            team.Hand.DrawN(team.CardPool, drawCount);
         }
 
         // ── Death processing ──────────────────────────────────────────────────

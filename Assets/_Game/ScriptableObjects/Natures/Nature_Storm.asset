@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Capybrawlers.Creatures::Capybrawlers.Creatures.NatureData
   natureType: 1
   baseHP: 40
-  baseATK: 20
+  baseATK: 30
   baseDEF: 10
   baseSPD: 30
   roleDescription: "Speed controller \u2014 fastest, hits first."

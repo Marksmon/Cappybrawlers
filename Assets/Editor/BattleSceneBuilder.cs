@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using Capybrawlers.Battle;
+using Capybrawlers.Creatures;
 using Capybrawlers.UI;
 using TMPro;
 using UnityEditor;
@@ -8,17 +9,16 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-// Layout (portrait 1080×1920) — compact:
+// Layout (portrait 1080×1920):
 //
 //   ┌─────────────────────────────┐  y = 1.00
-//   │ Turn N             [Timer] │  HUD bar          y 0.96–1.00
-//   │  [Opp BL L]  [Opp BL R]   │  opp backline     y 0.75–0.95
-//   │       [Opp Frontline]      │  opp frontline    y 0.58–0.75
-//   │       [Ply Frontline]      │  ply frontline    y 0.44–0.57
-//   │  [Ply BL L]  [Ply BL R]   │  ply backline     y 0.31–0.44
-//   │ [Stg0]  [Stg1]  [Stg2]   │  staging strip    y 0.24–0.31
-//   │[C0][C1][C2][C3][C4]       │  hand (5 cards)   y 0.07–0.24
-//   │[Stam] [End Turn][Lock In] │  controls         y 0.00–0.07
+//   │ Turn N  Overlord vs Opp   │  HUD bar          y 0.96–1.00
+//   │[Stg0..Stg9]               │  staging strip    y 0.90–0.96  (touches HUD, thinner)
+//   │[P_Mid]          [E_Mid]   │  mid brawlers     y 0.70–0.88  (same size as all brawlers)
+//   │[P_Front]      [E_Front]   │  front brawlers   y 0.50–0.68  (same size)
+//   │[P_Back]         [E_Back]  │  back brawlers    y 0.30–0.48  (same size)
+//   │[C0..C17]                  │  hand (18 cards)  y 0.07–0.27
+//   │[Stam] [End Turn]   [Deck] │  controls         y 0.00–0.07
 //   └─────────────────────────────┘  y = 0.00
 //
 //   Overlays (hidden by default):
@@ -39,7 +39,7 @@ public static class BattleSceneBuilder
         camGO.tag = "MainCamera";
         var cam = camGO.AddComponent<Camera>();
         cam.clearFlags      = CameraClearFlags.SolidColor;
-        cam.backgroundColor = new Color(0.06f, 0.06f, 0.10f);
+        cam.backgroundColor = new Color(0.07f, 0.14f, 0.07f);
         cam.orthographic    = true;
         cam.depth           = -1;
 
@@ -61,58 +61,85 @@ public static class BattleSceneBuilder
         // ── HUD bar ────────────────────────────────────────────────────────────
         var hudPanel = MakePanel("HUDBar", ct, 0f, 0.96f, 1f, 1f);
         AddPanelBg(hudPanel, new Color(0f, 0f, 0f, 0.55f));
-        var turnText  = MakeTMP(hudPanel.transform, "TurnText",  "Turn 1", 26);
-        PositionRect(turnText.rectTransform,  0.03f, 0f, 0.55f, 1f);
+        var turnText  = MakeTMP(hudPanel.transform, "TurnText",  "Turn 1", 22);
+        PositionRect(turnText.rectTransform,  0.02f, 0f, 0.22f, 1f);
         turnText.alignment = TextAlignmentOptions.MidlineLeft;
-        var timerText = MakeTMP(hudPanel.transform, "TimerText", "",       34);
-        PositionRect(timerText.rectTransform, 0.55f, 0f, 0.97f, 1f);
+        var matchupText = MakeTMP(hudPanel.transform, "MatchupText", "Overlord vs Opponent", 20);
+        PositionRect(matchupText.rectTransform, 0.22f, 0f, 0.78f, 1f);
+        matchupText.alignment = TextAlignmentOptions.Center;
+        matchupText.color     = new Color(1f, 0.90f, 0.65f);
+        var timerText = MakeTMP(hudPanel.transform, "TimerText", "",       22);
+        PositionRect(timerText.rectTransform, 0.78f, 0f, 0.98f, 1f);
         timerText.alignment = TextAlignmentOptions.MidlineRight;
         timerText.color     = new Color(1f, 0.85f, 0.2f);
 
         // ── Brawler views ──────────────────────────────────────────────────────
-        // Player: index 0 = frontline (larger), 1 = backline-right, 2 = backline-left
+        // All panels: anchor width 0.22 (≈ 238px at 1080 ref) — no x-scale so text stays sharp.
+        // Mid + Front pinned to outer edge; Back shifted toward center so the two face each other.
+        // Formation (player left, opponent right, perfectly mirrored):
+        //   P_Mid  (upper-left)   P_Front (center-left)  P_Back (lower-left)
+        //   E_Mid  (upper-right)  E_Front (center-right) E_Back (lower-right)
         var plyViews = new BrawlerView[3];
-        plyViews[0] = MakeBrawlerView("P_Frontline",   ct, 0.02f, 0.44f, 0.65f, 0.57f);
-        plyViews[1] = MakeBrawlerView("P_Backline_R",  ct, 0.37f, 0.31f, 0.70f, 0.44f);
-        plyViews[2] = MakeBrawlerView("P_Backline_L",  ct, 0.02f, 0.31f, 0.36f, 0.44f);
+        plyViews[0] = MakeBrawlerView("P_Front", ct, 0.26f, 0.49f, 0.48f, 0.67f);
+        plyViews[1] = MakeBrawlerView("P_Mid",   ct, 0.02f, 0.67f, 0.24f, 0.85f);
+        plyViews[2] = MakeBrawlerView("P_Back",  ct, 0.02f, 0.32f, 0.24f, 0.50f);
 
-        // Opponent: index 0 = frontline (larger), 1 = backline-left, 2 = backline-right
         var oppViews = new BrawlerView[3];
-        oppViews[0] = MakeBrawlerView("E_Frontline",   ct, 0.35f, 0.58f, 0.98f, 0.75f);
-        oppViews[1] = MakeBrawlerView("E_Backline_L",  ct, 0.30f, 0.75f, 0.63f, 0.95f);
-        oppViews[2] = MakeBrawlerView("E_Backline_R",  ct, 0.64f, 0.75f, 0.98f, 0.95f);
+        oppViews[0] = MakeBrawlerView("E_Front", ct, 0.52f, 0.49f, 0.74f, 0.67f);
+        oppViews[1] = MakeBrawlerView("E_Mid",   ct, 0.76f, 0.67f, 0.98f, 0.85f);
+        oppViews[2] = MakeBrawlerView("E_Back",  ct, 0.76f, 0.31f, 0.98f, 0.49f);
 
-        // ── Staging strip (3 slots, y 0.24–0.31) ──────────────────────────────
-        var stagedPanel = MakePanel("StagedPanel", ct, 0f, 0.24f, 1f, 0.31f);
-        AddPanelBg(stagedPanel, new Color(0.08f, 0.08f, 0.18f, 0.85f));
-        var stagedViews = MakeStagedCardViews(stagedPanel.transform, 3);
+        // ── Staging strip (10 slots, y 0.90–0.96, directly below HUD) ────────
+        var stagedPanel = MakePanel("StagedPanel", ct, 0f, 0.90f, 1f, 0.96f);
+        AddPanelBg(stagedPanel, new Color(0.14f, 0.09f, 0.04f, 0.90f));
+        var stagedViews = MakeStagedCardViews(stagedPanel.transform, 10);
 
-        // ── Hand panel (5 cards, y 0.07–0.24) ─────────────────────────────────
-        var handPanel = MakePanel("HandPanel", ct, 0f, 0.07f, 1f, 0.24f);
-        var cardViews = MakeCardViews(handPanel.transform, 5);
+        // ── Hand panel (18 cards, y 0.07–0.27) ────────────────────────────────
+        var handPanel = MakePanel("HandPanel", ct, 0f, 0.07f, 1f, 0.27f);
+        var cardViews = MakeCardViews(handPanel.transform, 18);
         var handView  = handPanel.AddComponent<HandView>();
         SetArray(handView, "_cardViews",       cardViews);
         SetArray(handView, "_stagedCardViews", stagedViews);
 
-        // ── Controls row (y 0–0.07) ────────────────────────────────────────────
-        var staminaGO  = MakePanel("StaminaView", ct, 0f, 0f, 0.22f, 0.07f);
-        AddPanelBg(staminaGO, new Color(0.15f, 0.15f, 0.35f));
-        var staminaTxt = MakeTMP(staminaGO.transform, "StaminaText", "2/6", 22);
-        StretchRect(staminaTxt.rectTransform);
+        // ── Controls row (y 0–0.07): [STAM] | End Turn | [DECK] ─────────────────
+        var ctrlBg = MakePanel("ControlsRowBg", ct, 0f, 0f, 1f, 0.07f);
+        AddPanelBg(ctrlBg, new Color(0.06f, 0.04f, 0.02f));
+
+        // Stamina — left side of controls row
+        var staminaGO = MakePanel("StaminaView", ct, 0f, 0f, 0.16f, 0.07f);
+        AddPanelBg(staminaGO, new Color(0.10f, 0.07f, 0.03f));
+        var stamLbl = MakeTMP(staminaGO.transform, "StamLabel", "STAM", 8);
+        PositionRect(stamLbl.rectTransform, 0.05f, 0.60f, 0.95f, 0.95f);
+        stamLbl.color = new Color(0.55f, 0.55f, 0.55f);
+        var staminaTxt = MakeTMP(staminaGO.transform, "StaminaNum", "3", 16);
+        PositionRect(staminaTxt.rectTransform, 0.05f, 0.05f, 0.95f, 0.65f);
+        staminaTxt.color = new Color(0.4f, 0.9f, 1f);
         var staminaView = staminaGO.AddComponent<StaminaView>();
         Set(staminaView, "_staminaText", staminaTxt);
 
-        var endTurnGO  = MakePanel("EndTurnButton", ct, 0.23f, 0f, 1f, 0.07f);
+        // End Turn — centered with space on both sides
+        var endTurnGO  = MakePanel("EndTurnButton", ct, 0.20f, 0.008f, 0.80f, 0.062f);
         var endTurnImg = endTurnGO.AddComponent<Image>();
-        endTurnImg.color = new Color(0.75f, 0.35f, 0.10f);
+        endTurnImg.color = new Color(0.48f, 0.29f, 0.13f);
         var endTurnBtn  = endTurnGO.AddComponent<Button>();
         MakeTMP(endTurnGO.transform, "Label", "End Turn", 22);
         var confirmQBtn = endTurnGO.AddComponent<QueueConfirmButton>();
         Set(confirmQBtn, "_endTurnButton", endTurnBtn);
 
+        // Deck count — right side of controls row
+        var deckGO = MakePanel("DeckCount", ct, 0.84f, 0f, 1f, 0.07f);
+        AddPanelBg(deckGO, new Color(0.10f, 0.07f, 0.03f));
+        var deckLbl = MakeTMP(deckGO.transform, "DeckLabel", "DECK", 8);
+        PositionRect(deckLbl.rectTransform, 0.05f, 0.60f, 0.95f, 0.95f);
+        deckLbl.color = new Color(0.55f, 0.55f, 0.55f);
+        var deckCountTxt = MakeTMP(deckGO.transform, "DeckCountNum", "18", 16);
+        PositionRect(deckCountTxt.rectTransform, 0.05f, 0.05f, 0.95f, 0.65f);
+        deckCountTxt.color = new Color(1f, 0.85f, 0.50f);
+        Set(handView, "_deckCountText", deckCountTxt);
+
         // ── End screen (starts inactive) ───────────────────────────────────────
         var endGO   = MakePanel("EndScreen", ct, 0.1f, 0.2f, 0.9f, 0.8f);
-        AddPanelBg(endGO, new Color(0f, 0f, 0f, 0.88f));
+        AddPanelBg(endGO, new Color(0.09f, 0.06f, 0.02f, 0.93f));
         var resultTxt = MakeTMP(endGO.transform, "ResultText", "Victory!", 54);
         var bpTxt     = MakeTMP(endGO.transform, "BPText",     "0 BP (+25)", 36);
         var rankTxt   = MakeTMP(endGO.transform, "RankText",   "Pup", 36);
@@ -142,6 +169,18 @@ public static class BattleSceneBuilder
         var sceneCtrl   = sceneCtrlGO.AddComponent<BattleSceneController>();
         Set(sceneCtrl, "_battleManager", battleMgr);
 
+        const string LibsDir = "Assets/_Game/ScriptableObjects/Libraries";
+        var natLib   = AssetDatabase.LoadAssetAtPath<NatureLibrary>($"{LibsDir}/NatureLibrary.asset");
+        var equipLib = AssetDatabase.LoadAssetAtPath<EquipmentLibrary>($"{LibsDir}/EquipmentLibrary.asset");
+        if (natLib  != null) Set(sceneCtrl, "_natures",   natLib);
+        if (equipLib != null) Set(sceneCtrl, "_equipment", equipLib);
+        if (natLib == null || equipLib == null)
+            Debug.LogWarning("[Capybrawlers] Library SOs not found — run Generate SO Assets to wire them.");
+
+        // ── Battle intro screen (rendered on top) ──────────────────────────────
+        var introCtrl = MakeBattleIntroPanel(ct);
+        Set(sceneCtrl, "_introController", introCtrl);
+
         var uiCtrlGO = new GameObject("BattleUIController");
         var uiCtrl   = uiCtrlGO.AddComponent<BattleUIController>();
         SetArray(uiCtrl, "_playerBrawlerViews",   plyViews);
@@ -151,6 +190,7 @@ public static class BattleSceneBuilder
         Set(uiCtrl, "_confirmButton",     confirmQBtn);
         Set(uiCtrl, "_endScreen",         endCtrl);
         Set(uiCtrl, "_turnText",          turnText);
+        Set(uiCtrl, "_matchupText",       matchupText);
         Set(uiCtrl, "_timerText",         timerText);
         Set(uiCtrl, "_brawlerInfoPanel",  infoPanel);
         Set(sceneCtrl, "_ui", uiCtrl);
@@ -159,6 +199,7 @@ public static class BattleSceneBuilder
         var resAnim   = resAnimGO.AddComponent<ResolutionAnimator>();
         SetArray(resAnim, "_playerViews",   plyViews);
         SetArray(resAnim, "_opponentViews", oppViews);
+        Set(resAnim, "_popupContainer", canvasGO.GetComponent<RectTransform>());
 
         // ── Save ───────────────────────────────────────────────────────────────
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -174,7 +215,7 @@ public static class BattleSceneBuilder
         float x0, float y0, float x1, float y1)
     {
         var go = MakePanel(name, parent, x0, y0, x1, y1);
-        AddPanelBg(go, new Color(0.12f, 0.12f, 0.20f, 0.6f));
+        AddPanelBg(go, new Color(0.23f, 0.16f, 0.07f, 0.80f));
 
         var sliderGO = MakePanel("HPBar", go.transform, 0.04f, 0.04f, 0.96f, 0.20f);
         var bg       = sliderGO.AddComponent<Image>();
@@ -193,7 +234,7 @@ public static class BattleSceneBuilder
 
         var natureTxt = MakeTMP(go.transform, "NatureText", "Rock", 12);
         PositionRect(natureTxt.rectTransform, 0.04f, 0.37f, 0.96f, 0.55f);
-        natureTxt.color = new Color(0.7f, 0.85f, 1f);
+        natureTxt.color = new Color(1f, 0.86f, 0.50f);
 
         // Badge row — 6 small indicator slots at y 0.55–0.72
         const int badgeCount = 6;
@@ -241,15 +282,19 @@ public static class BattleSceneBuilder
     private static BrawlerInfoPanel MakeBrawlerInfoPanel(Transform ct, out CardDetailPopup cardDetail)
     {
         var infoGO = MakePanel("BrawlerInfoPanel", ct, 0f, 0.08f, 1f, 0.85f);
-        AddPanelBg(infoGO, new Color(0.05f, 0.05f, 0.12f, 0.95f));
+        AddPanelBg(infoGO, new Color(0.96f, 0.91f, 0.78f, 0.97f));
+
+        var inkBrown = new Color(0.16f, 0.10f, 0.04f);
 
         var nameTxt  = MakeTMP(infoGO.transform, "NameText",  "Rock Capybrawler", 28);
         PositionRect(nameTxt.rectTransform,  0.03f, 0.93f, 0.80f, 1.00f);
         nameTxt.alignment = TextAlignmentOptions.MidlineLeft;
+        nameTxt.color     = inkBrown;
 
         var statsTxt = MakeTMP(infoGO.transform, "StatsText", "HP 100/100  ATK 20  DEF 10  SPD 8", 20);
         PositionRect(statsTxt.rectTransform, 0.03f, 0.85f, 0.97f, 0.93f);
         statsTxt.alignment = TextAlignmentOptions.MidlineLeft;
+        statsTxt.color     = inkBrown;
 
         var closeBtnGO  = MakePanel("CloseButton", infoGO.transform, 0.82f, 0.93f, 0.98f, 1.00f);
         var closeBtnImg = closeBtnGO.AddComponent<Image>();
@@ -267,11 +312,12 @@ public static class BattleSceneBuilder
         {
             var rowGO  = MakePanel($"EquipRow_{i}", infoGO.transform, 0.03f, equipY0[i], 0.97f, equipY1[i]);
             var rowImg = rowGO.AddComponent<Image>();
-            rowImg.color = new Color(0.18f, 0.18f, 0.30f);
+            rowImg.color = new Color(0.78f, 0.62f, 0.38f, 0.80f);
             var rowBtn  = rowGO.AddComponent<Button>();
             var lbl     = MakeTMP(rowGO.transform, "EquipLabel", $"[{slotNames[i]}] —", 20);
             PositionRect(lbl.rectTransform, 0.04f, 0.1f, 0.96f, 0.9f);
             lbl.alignment = TextAlignmentOptions.MidlineLeft;
+            lbl.color     = inkBrown;
             equipBtns[i]   = rowBtn;
             equipLabels[i] = lbl;
         }
@@ -293,7 +339,7 @@ public static class BattleSceneBuilder
     private static CardDetailPopup MakeCardDetailPopup(Transform ct)
     {
         var go = MakePanel("CardDetailPopup", ct, 0.04f, 0.20f, 0.96f, 0.70f);
-        AddPanelBg(go, new Color(0.03f, 0.03f, 0.10f, 0.97f));
+        AddPanelBg(go, new Color(0.09f, 0.06f, 0.02f, 0.97f));
 
         var nameTxt = MakeTMP(go.transform, "CardName", "Card Name", 26);
         PositionRect(nameTxt.rectTransform, 0.05f, 0.86f, 0.72f, 1.00f);
@@ -306,7 +352,7 @@ public static class BattleSceneBuilder
 
         var descTxt = MakeTMP(go.transform, "DescText", "Effect description", 18);
         PositionRect(descTxt.rectTransform, 0.05f, 0.22f, 0.95f, 0.84f);
-        descTxt.enableWordWrapping = true;
+        descTxt.textWrappingMode = TMPro.TextWrappingModes.Normal;
         descTxt.alignment          = TextAlignmentOptions.TopLeft;
 
         var closeBtnGO  = MakePanel("CloseButton", go.transform, 0.25f, 0.03f, 0.75f, 0.19f);
@@ -324,16 +370,24 @@ public static class BattleSceneBuilder
         return popup;
     }
 
-    // ── Staged card views (compact strip) ─────────────────────────────────────
+    // ── Staged card views — cards auto-resize to fill available width ──────────
 
     private static CardView[] MakeStagedCardViews(Transform parent, int count)
     {
-        float slotW = 1f / count;
+        var hlg = parent.gameObject.AddComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment         = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandHeight = true;
+        hlg.spacing = 3f;
+        hlg.padding = new RectOffset(4, 4, 4, 4);
+
         var views = new CardView[count];
         for (int i = 0; i < count; i++)
         {
-            var go = MakePanel($"StagedView_{i}", parent,
-                slotW * i + 0.01f, 0.04f, slotW * (i + 1) - 0.01f, 0.96f);
+            var go = new GameObject($"StagedView_{i}");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<RectTransform>();
+
             AddPanelBg(go, new Color(0.20f, 0.45f, 0.20f, 0.9f));
 
             var nameTxt = MakeTMP(go.transform, "NameText", "Card", 14);
@@ -345,7 +399,7 @@ public static class BattleSceneBuilder
 
             var descTxt = MakeTMP(go.transform, "DescText", "", 10);
             PositionRect(descTxt.rectTransform, 0.04f, 0.35f, 0.95f, 0.58f);
-            descTxt.enableWordWrapping = true;
+            descTxt.textWrappingMode = TMPro.TextWrappingModes.Normal;
 
             var removeBtnGO  = MakePanel("AssignButton", go.transform, 0.04f, 0.02f, 0.96f, 0.33f);
             var removeBtnImg = removeBtnGO.AddComponent<Image>();
@@ -370,21 +424,29 @@ public static class BattleSceneBuilder
         return views;
     }
 
-    // ── Card views (hand, 5 slots) ────────────────────────────────────────────
+    // ── Card views (hand) — cards auto-resize to fill available width ─────────
 
     private static CardView[] MakeCardViews(Transform parent, int count)
     {
-        float slotW = 1f / count;
+        var hlg = parent.gameObject.AddComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment         = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandHeight = true;
+        hlg.spacing = 3f;
+        hlg.padding = new RectOffset(4, 4, 4, 4);
+
         var views = new CardView[count];
         for (int i = 0; i < count; i++)
         {
-            var go = MakePanel($"CardView_{i}", parent,
-                slotW * i + 0.004f, 0.02f, slotW * (i + 1) - 0.004f, 0.98f);
-            AddPanelBg(go, new Color(0.13f, 0.13f, 0.22f));
+            var go = new GameObject($"CardView_{i}");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<RectTransform>();
+
+            AddPanelBg(go, new Color(0.23f, 0.16f, 0.07f));
 
             var nameTxt = MakeTMP(go.transform, "NameText", "Card Name", 14);
             PositionRect(nameTxt.rectTransform, 0.04f, 0.78f, 0.96f, 0.97f);
-            nameTxt.enableWordWrapping = true;
+            nameTxt.textWrappingMode = TMPro.TextWrappingModes.Normal;
 
             var costTxt = MakeTMP(go.transform, "CostText", "1", 15);
             PositionRect(costTxt.rectTransform, 0.70f, 0.60f, 0.97f, 0.78f);
@@ -392,11 +454,11 @@ public static class BattleSceneBuilder
 
             var descTxt = MakeTMP(go.transform, "DescText", "Effect", 11);
             PositionRect(descTxt.rectTransform, 0.04f, 0.26f, 0.96f, 0.60f);
-            descTxt.enableWordWrapping = true;
+            descTxt.textWrappingMode = TMPro.TextWrappingModes.Normal;
 
             var assignBtnGO  = MakePanel("AssignButton", go.transform, 0.04f, 0.03f, 0.96f, 0.24f);
             var assignBtnImg = assignBtnGO.AddComponent<Image>();
-            assignBtnImg.color = new Color(0.25f, 0.45f, 0.85f);
+            assignBtnImg.color = new Color(0.48f, 0.29f, 0.13f);
             var assignBtn    = assignBtnGO.AddComponent<Button>();
             MakeTMP(assignBtnGO.transform, "Label", "Select", 13);
 
@@ -404,6 +466,9 @@ public static class BattleSceneBuilder
             var assignedImg = assignedGO.AddComponent<Image>();
             assignedImg.color   = new Color(0f, 1f, 0f, 0.18f);
             assignedImg.enabled = false;
+
+            go.AddComponent<CanvasGroup>();
+            go.SetActive(false);
 
             var cv = go.AddComponent<CardView>();
             Set(cv, "_nameText",          nameTxt);
@@ -414,6 +479,130 @@ public static class BattleSceneBuilder
             views[i] = cv;
         }
         return views;
+    }
+
+    // ── Battle intro screen ───────────────────────────────────────────────────
+
+    private static BattleIntroController MakeBattleIntroPanel(Transform ct)
+    {
+        // Full-screen overlay — rendered on top of everything
+        var introGO = MakePanel("BattleIntroScreen", ct, 0f, 0f, 1f, 1f);
+        AddPanelBg(introGO, new Color(0.04f, 0.06f, 0.04f, 0.97f));
+
+        // ── Opponent band (top 47%) ────────────────────────────────────────
+        var oppBand = MakePanel("OpponentBand", introGO.transform, 0f, 0.52f, 1f, 1.0f);
+        AddPanelBg(oppBand, new Color(0.18f, 0.04f, 0.04f, 0.70f));
+
+        var oppNameTxt = MakeTMP(oppBand.transform, "OpponentName", "OPPONENT", 24);
+        PositionRect(oppNameTxt.rectTransform, 0.03f, 0.86f, 0.97f, 1.00f);
+        oppNameTxt.alignment = TextAlignmentOptions.MidlineLeft;
+        oppNameTxt.color     = new Color(0.95f, 0.75f, 0.45f);
+
+        var oppSlices = new BrawlerIntroSlice[3];
+        for (int i = 0; i < 3; i++)
+        {
+            float x0 = i / 3f + 0.004f;
+            float x1 = (i + 1) / 3f - 0.004f;
+            oppSlices[i] = MakeIntroSlice($"OppSlice_{i}", oppBand.transform, x0, 0.02f, x1, 0.84f);
+        }
+
+        // ── VS badge ──────────────────────────────────────────────────────
+        var vsBadgeGO  = MakePanel("VSBadge", introGO.transform, 0.35f, 0.46f, 0.65f, 0.55f);
+        var vsBadgeImg = vsBadgeGO.AddComponent<Image>();
+        vsBadgeImg.color = new Color(0.55f, 0.38f, 0.08f);
+        var vsTxt  = MakeTMP(vsBadgeGO.transform, "VSText", "VS", 46);
+        StretchRect(vsTxt.rectTransform);
+        vsTxt.fontStyle = FontStyles.Bold;
+        vsTxt.color     = new Color(1f, 0.92f, 0.55f);
+
+        // ── Divider lines flanking VS ──────────────────────────────────────
+        var leftLine  = MakePanel("DivLeft",  introGO.transform, 0f,    0.497f, 0.34f, 0.503f);
+        var rightLine = MakePanel("DivRight", introGO.transform, 0.66f, 0.497f, 1.0f,  0.503f);
+        AddPanelBg(leftLine,  new Color(0.78f, 0.56f, 0.16f, 0.8f));
+        AddPanelBg(rightLine, new Color(0.78f, 0.56f, 0.16f, 0.8f));
+
+        // ── Player band (bottom 47%) ───────────────────────────────────────
+        var plyBand = MakePanel("PlayerBand", introGO.transform, 0f, 0f, 1f, 0.47f);
+        AddPanelBg(plyBand, new Color(0.04f, 0.18f, 0.04f, 0.70f));
+
+        var plyNameTxt = MakeTMP(plyBand.transform, "PlayerName", "YOU", 24);
+        PositionRect(plyNameTxt.rectTransform, 0.03f, 0.0f, 0.97f, 0.14f);
+        plyNameTxt.alignment = TextAlignmentOptions.MidlineLeft;
+        plyNameTxt.color     = new Color(0.95f, 0.75f, 0.45f);
+
+        var plySlices = new BrawlerIntroSlice[3];
+        for (int i = 0; i < 3; i++)
+        {
+            float x0 = i / 3f + 0.004f;
+            float x1 = (i + 1) / 3f - 0.004f;
+            plySlices[i] = MakeIntroSlice($"PlySlice_{i}", plyBand.transform, x0, 0.16f, x1, 0.98f);
+        }
+
+        // ── Countdown ──────────────────────────────────────────────────────
+        var countdownTxt = MakeTMP(introGO.transform, "Countdown", "4", 36);
+        PositionRect(countdownTxt.rectTransform, 0.42f, 0.003f, 0.58f, 0.06f);
+        countdownTxt.color     = new Color(0.95f, 0.78f, 0.30f);
+        countdownTxt.fontStyle = FontStyles.Bold;
+
+        // ── Wire controller ────────────────────────────────────────────────
+        var ctrl = introGO.AddComponent<BattleIntroController>();
+        Set(ctrl, "_playerNameText",   plyNameTxt);
+        Set(ctrl, "_opponentNameText", oppNameTxt);
+        Set(ctrl, "_countdownText",    countdownTxt);
+        SetArray(ctrl, "_playerSlices",   plySlices);
+        SetArray(ctrl, "_opponentSlices", oppSlices);
+
+        introGO.SetActive(false);
+        return ctrl;
+    }
+
+    private static BrawlerIntroSlice MakeIntroSlice(string name, Transform parent,
+        float x0, float y0, float x1, float y1)
+    {
+        var go = MakePanel(name, parent, x0, y0, x1, y1);
+        var bg = go.AddComponent<Image>();
+        bg.color = new Color(0.3f, 0.3f, 0.3f, 0.85f); // overwritten by Bind()
+
+        // Thin darker border overlay
+        var borderGO  = MakePanel("Border", go.transform, 0f, 0f, 1f, 1f);
+        var borderImg = borderGO.AddComponent<Image>();
+        borderImg.color         = new Color(0f, 0f, 0f, 0.35f);
+        borderImg.raycastTarget = false;
+
+        // Creature sprite — fills most of the slice
+        var creGO  = MakePanel("Creature", go.transform, 0.05f, 0.22f, 0.95f, 0.88f);
+        var creImg = creGO.AddComponent<Image>();
+        creImg.preserveAspect = true;
+        creImg.color          = Color.white;
+        creImg.raycastTarget  = false;
+
+        // Nature name — rotated to read bottom-to-top along the slice
+        var natGO = new GameObject("NatureLabel");
+        natGO.transform.SetParent(go.transform, false);
+        var natRT = natGO.AddComponent<RectTransform>();
+        PositionRect(natRT, 0f, 0.1f, 1f, 0.9f);
+        natGO.transform.localRotation = Quaternion.Euler(0f, 0f, -90f);
+        var natTxt = natGO.AddComponent<TextMeshProUGUI>();
+        natTxt.text           = "NATURE";
+        natTxt.fontSize       = 20;
+        natTxt.fontStyle      = FontStyles.Bold;
+        natTxt.alignment      = TextAlignmentOptions.Center;
+        natTxt.color          = new Color(1f, 1f, 1f, 0.25f);
+        natTxt.raycastTarget  = false;
+
+        // Stats text — bottom strip
+        var statsTxt = MakeTMP(go.transform, "Stats", "HP 80", 12);
+        PositionRect(statsTxt.rectTransform, 0.04f, 0.01f, 0.96f, 0.20f);
+        statsTxt.color       = new Color(1f, 1f, 1f, 0.90f);
+        statsTxt.alignment   = TextAlignmentOptions.Center;
+        statsTxt.enableWordWrapping = false;
+
+        var slice = go.AddComponent<BrawlerIntroSlice>();
+        Set(slice, "_bg",            bg);
+        Set(slice, "_creatureImage", creImg);
+        Set(slice, "_natureText",    natTxt);
+        Set(slice, "_statsText",     statsTxt);
+        return slice;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -483,5 +672,6 @@ public static class BattleSceneBuilder
         scenes.Add(new EditorBuildSettingsScene(path, true));
         EditorBuildSettings.scenes = scenes.ToArray();
     }
+
 }
 #endif
